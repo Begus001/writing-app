@@ -6,6 +6,6 @@
 #define WIN_WIDTH 1920
 #define WIN_HEIGHT 1080
 
-int fbwidth, fbheight;
+#define SAMPLES 8
 
 #endif
