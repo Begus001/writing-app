@@ -39,11 +39,10 @@ int main(void)
 	widget_t *w1 = ui_widget_create(WIDGET_WIDGET);
 
 	*w1 = (widget_t) {
-		.x = 100,
-		.y = 100,
 		.width = 1000,
 		.height = 500,
 		.border_radius = 50,
+		.position_in_parent = 0,
 		.main_color = (color_t) {
 			.r = 1.0,
 			.g = 0.0,
@@ -60,6 +59,7 @@ int main(void)
 		.width = 1000,
 		.height = 500,
 		.border_radius = 100,
+		.position_in_parent = 0,
 		.main_color = (color_t) {
 			.r = 0.0,
 			.g = 1.0,
@@ -72,6 +72,7 @@ int main(void)
 
 	*w3 = (widget_t) {
 		.border_radius = 0,
+		.position_in_parent = 1,
 		.main_color = (color_t) {
 			.r = 0.0,
 			.g = 0.0,
@@ -84,6 +85,7 @@ int main(void)
 
 	*w4 = (widget_t) {
 		.border_radius = 0,
+		.position_in_parent = 2,
 		.main_color = (color_t) {
 			.r = 0.0,
 			.g = 1.0,
@@ -103,11 +105,11 @@ int main(void)
 		},
 		.orientation = ORIENTATION_HORIZONTAL,
 	};
-	ui_widget_set_root(WIDGET(root));
 
 	container_t *c1 = CONTAINER(ui_widget_create(WIDGET_CONTAINER));
 	*c1 = (container_t) {
 		.children_max = 3,
+		.position_in_parent = 1,
 		.main_color = (color_t) {
 			.r = 0.5,
 			.g = 0.5,
@@ -117,17 +119,14 @@ int main(void)
 		.orientation = ORIENTATION_VERTICAL,
 	};
 
+	ui_widget_set_root(WIDGET(root));
+	
 	ui_container_add(root, w1);
-	// ui_container_add(root, w2);
 	ui_container_add(root, WIDGET(c1));
 	ui_container_add(c1, w2);
 	ui_container_add(c1, w3);
 	ui_container_add(c1, w4);
 
-	w2->width -= 200;
-	w2->x += 100;
-	w2->height -= 100;
-	w2->y += 50;
 
 	while(!glfwWindowShouldClose(win)) {
 		ui_widget_draw(WIDGET(root));
