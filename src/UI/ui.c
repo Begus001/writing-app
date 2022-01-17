@@ -103,6 +103,8 @@ void ui_container_add(container_t *container, widget_t *widget)
 		widget->height = container->height / container->children_max;
 	}
 
+	widget->parent = WIDGET(container);
+
 	container->children_num++;
 }
 
