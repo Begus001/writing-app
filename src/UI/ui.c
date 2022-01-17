@@ -18,11 +18,6 @@ widget_t *ui_widget_create(widget_type_t type)
 			memset(widget, 0, sizeof(widget_t));
 			widget->type = WIDGET_WIDGET;
 			break;
-		case WIDGET_EMPTY:
-			widget = malloc(sizeof(widget_t));
-			memset(widget, 0, sizeof(widget_t));
-			widget->type = WIDGET_EMPTY;
-			break;
 		case WIDGET_CONTAINER:
 			widget = malloc(sizeof(container_t));
 			memset(widget, 0, sizeof(container_t));
@@ -51,7 +46,7 @@ void ui_widget_set_root(widget_t *widget)
 	widget->parent = NULL;
 }
 
-static bool fill_rounded_rect(double x, double y, double w, double h, double r)
+void ui_fill_rounded_rect(double x, double y, double w, double h, double r)
 {
 	if (r > fmin(w, h) / 2.0)
 		r = fmin(w, h) / 2;
@@ -66,11 +61,9 @@ static bool fill_rounded_rect(double x, double y, double w, double h, double r)
 	for (double d = 0.0; d <= M_PI_2; d += M_PI_2 / NUM_ROUNDED_EDGES)
 		glVertex2d(x + r * (1 - sin(d)), y + h - r * (1 - cos(d)));
 	glEnd();
-
-	return true;
 }
 
-static bool fill_rect(double x, double y, double w, double h)
+void ui_fill_rect(double x, double y, double w, double h)
 {
 	glBegin(GL_POLYGON);
 	glVertex2d(x, y);
@@ -80,23 +73,22 @@ static bool fill_rect(double x, double y, double w, double h)
 	glEnd();
 }
 
-bool ui_widget_draw(widget_t *widget)
+void ui_widget_draw(widget_t *widget)
 {
 	color_t c = widget->main_color;
 	glColor4d(c.r, c.g, c.b, c.a);
 	if (widget->border_radius > 0)
-		fill_rounded_rect(widget->x, widget->y, widget->width, widget->height, widget->border_radius);
+		ui_fill_rounded_rect(widget->x, widget->y, widget->width, widget->height, widget->border_radius);
 	else
-		fill_rect(widget->x, widget->y, widget->width, widget->height);
-	return true;
+		ui_fill_rect(widget->x, widget->y, widget->width, widget->height);
 }
 
-bool ui_widget_draw_recursive(widget_t *widget)
-{
-	return 0;
-}
+// void ui_widget_draw_recursive(widget_t *widget)
+// {
+//
+// }
 
-bool ui_container_add(container_t *container, widget_t *widget)
+void ui_container_add(container_t *container, widget_t *widget)
 {
 	container->children[container->children_num] = widget;
 	if (container->orientation == ORIENTATION_HORIZONTAL) {
@@ -121,7 +113,6 @@ void ui_widget_destroy(widget_t *widget)
 
 	switch (widget->type) {
 		case WIDGET_WIDGET:
-		case WIDGET_EMPTY:
 		case WIDGET_CONTAINER:
 		case WIDGET_BUTTON:
 			free(widget);

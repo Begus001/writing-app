@@ -10,9 +10,9 @@
 #define CONTAINER(x) ((container_t *)(x))
 #define BUTTON(x)    ((button_t *)(x))
 
+
 typedef enum {
 	WIDGET_WIDGET,
-	WIDGET_EMPTY,
 	WIDGET_CONTAINER,
 	WIDGET_BUTTON,
 } widget_type_t;
@@ -61,10 +61,13 @@ widget_t *ui_widget_create(widget_type_t type);
 
 void ui_widget_set_root(widget_t *widget);
 
-bool ui_widget_draw(widget_t *widget);
-bool ui_widget_draw_recursive(widget_t *widget);
+void ui_fill_rounded_rect(double x, double y, double w, double h, double r);
+void ui_fill_rect(double x, double y, double w, double h);
 
-bool ui_container_add(container_t *container, widget_t *widget);
+void ui_widget_draw(widget_t *widget);
+void ui_widget_draw_recursive(widget_t *widget);
+
+void ui_container_add(container_t *container, widget_t *widget);
 
 void ui_widget_destroy(widget_t *widget);
 

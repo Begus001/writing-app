@@ -119,7 +119,7 @@ int main(void)
 
 	ui_container_add(root, w1);
 	// ui_container_add(root, w2);
-	ui_container_add(root, c1);
+	ui_container_add(root, WIDGET(c1));
 	ui_container_add(c1, w2);
 	ui_container_add(c1, w3);
 	ui_container_add(c1, w4);
@@ -130,9 +130,9 @@ int main(void)
 	w2->y += 50;
 
 	while(!glfwWindowShouldClose(win)) {
-		ui_widget_draw(root);
+		ui_widget_draw(WIDGET(root));
 		ui_widget_draw(w1);
-		ui_widget_draw(c1);
+		ui_widget_draw(WIDGET(c1));
 		ui_widget_draw(w2);
 		ui_widget_draw(w3);
 		ui_widget_draw(w4);
