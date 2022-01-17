@@ -21,7 +21,7 @@ widget_t *ui_widget_create(widget_type_t type)
 		case WIDGET_CONTAINER:
 			widget = malloc(sizeof(container_t));
 			memset(widget, 0, sizeof(container_t));
-			widget->type = WIDGET_WIDGET;
+			widget->type = WIDGET_CONTAINER;
 			break;
 		case WIDGET_BUTTON:
 			widget = malloc(sizeof(button_t));
