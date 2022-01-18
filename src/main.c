@@ -8,6 +8,7 @@
 
 #include <UI/ui.h>
 
+GLFWwindow *win;
 container_t *root, *c1;
 
 void cb_error(int error, const char *description)
@@ -18,6 +19,20 @@ void cb_error(int error, const char *description)
 void cb_resize(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
+	glClear(GL_COLOR_BUFFER_BIT);
+	ui_widget_draw_recursive(WIDGET(root));
+	glfwSwapBuffers(win);
+	glClear(GL_COLOR_BUFFER_BIT);
+	ui_widget_draw_recursive(WIDGET(root));
+}
+
+void cb_maximize(GLFWwindow* window, int maximized)
+{
+	glClear(GL_COLOR_BUFFER_BIT);
+	ui_widget_draw_recursive(WIDGET(root));
+	glfwSwapBuffers(win);
+	glClear(GL_COLOR_BUFFER_BIT);
+	ui_widget_draw_recursive(WIDGET(root));
 }
 
 int main(void)
@@ -29,10 +44,11 @@ int main(void)
 
 	glfwWindowHint(GLFW_SAMPLES, SAMPLES);
 
-	GLFWwindow *win = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "Writing App", NULL, NULL);
+	win = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "Writing App", NULL, NULL);
 	glfwMakeContextCurrent(win);
 
 	glfwSetFramebufferSizeCallback(win, cb_resize);
+	glfwSetWindowMaximizeCallback(win, cb_maximize);
 	
 	int fbwidth, fbheight;
 	glfwGetFramebufferSize(win, &fbwidth, &fbheight);
@@ -118,19 +134,20 @@ int main(void)
 	ui_container_add(c1, w2);
 	ui_container_add(c1, w3);
 	ui_container_add(c1, w4);
-
+	ui_widget_draw_recursive(WIDGET(root));
+	glfwSwapBuffers(win);
+	ui_widget_draw_recursive(WIDGET(root));
 
 	while(!glfwWindowShouldClose(win)) {
-		ui_widget_draw_recursive(WIDGET(root));
-
-		glfwSwapBuffers(win);
-		glClear(GL_COLOR_BUFFER_BIT);
 		glfwPollEvents();
 	}
 
 
 	ui_widget_destroy(w1);
 	ui_widget_destroy(w2);
+	ui_widget_destroy(w3);
+	ui_widget_destroy(w4);
+	ui_widget_destroy(WIDGET(c1));
 	ui_widget_destroy(WIDGET(root));
 
 	glfwDestroyWindow(win);
