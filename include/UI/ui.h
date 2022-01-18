@@ -43,8 +43,10 @@ typedef enum {
 typedef enum {
 	POS_FILL,
 	POS_CENTER,
-	POS_CENTER_VERT,
-	POS_CENTER_HOR,
+	POS_LEFT,
+	POS_TOP,
+	POS_RIGHT,
+	POS_BOTTOM,
 } widget_positioning_t;
 
 typedef struct widget widget_t;
@@ -77,6 +79,7 @@ typedef struct {
 	char *text;
 } button_t;
 
+void ui_set_framebuffer_dimensions(int x, int y, int w, int h);
 
 widget_t *ui_widget_create(widget_type_t type);
 
@@ -88,6 +91,7 @@ ui_err_t ui_fill_rect(double x, double y, double w, double h);
 ui_err_t ui_widget_draw(widget_t *widget);
 ui_err_t ui_widget_draw_recursive(widget_t *widget);
 
+ui_err_t ui_container_arrange_children(container_t *container);
 ui_err_t ui_container_add(container_t *container, widget_t *widget);
 
 ui_err_t ui_widget_destroy(widget_t *widget);

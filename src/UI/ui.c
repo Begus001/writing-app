@@ -9,6 +9,14 @@
 
 int fbx, fby, fbwidth, fbheight;
 
+void ui_set_framebuffer_dimensions(int x, int y, int w, int h)
+{
+	fbx = x;
+	fby = y;
+	fbwidth = w;
+	fbheight = h;
+}
+
 widget_t *ui_widget_create(widget_type_t type)
 {
 	widget_t *widget;
@@ -90,12 +98,37 @@ ui_err_t ui_widget_draw(widget_t *widget)
 		return ui_fill_rect(widget->x, widget->y, widget->width, widget->height);
 }
 
-// ui_err_t ui_widget_draw_recursive(widget_t *widget)
-// {
-//
-// }
+ui_err_t ui_widget_draw_recursive(widget_t *widget)
+{
+	if (widget->type != WIDGET_CONTAINER)
+		return ui_widget_draw(widget);
+	
+	container_t *todo_list[2048] = {0};
+	todo_list[0] = CONTAINER(widget);
+	int todo_num = 1;
+	
+	container_t **c = &todo_list[0];
 
-ui_err_t ui_container_reset_positioning(container_t *container)
+	int res;
+
+	do {
+		res = ui_widget_draw(WIDGET(c));
+		if (res) return res;
+		for (int i = 0; i < (*c)->children_num; i++) {
+			widget_t *current = (*c)->children[i];
+			res = ui_widget_draw(current);
+			if (res) return res;
+
+			if (current->type == WIDGET_CONTAINER)
+				todo_list[todo_num++] = CONTAINER(current);
+		}
+		c++;
+	} while(*c);
+
+	return ERR_OK;
+}
+
+ui_err_t ui_container_arrange_children(container_t *container)
 {
 	container->space_size = (container->orientation ? container->height : container->width) / container->children_max;
 
@@ -104,13 +137,40 @@ ui_err_t ui_container_reset_positioning(container_t *container)
 
 		if (widget->position_in_parent >= container->children_max)
 			return ERR_INVALID_POSITION_IN_PARENT;
+		
+		double ww = widget->width, wh = widget->height;
+		int wpip = widget->position_in_parent;
+		double cx = container->x, cy = container->y, cw = container->width, ch = container->height;
+		double css = container->space_size;
+		int co = container->orientation;
+		double coff = container->space_size * widget->position_in_parent;
 
 		switch (widget->positioning) {
 		case POS_FILL:
-			widget->x = container->orientation ? container->x : (container->x + container->space_size * widget->position_in_parent);
-			widget->y = container->orientation ? (container->y + container->space_size * widget->position_in_parent) : container->y;
-			widget->width = container->orientation ? container->width : container->space_size;
-			widget->height = container->orientation ? container->space_size : container->height;
+			widget->x = co ? cx : (cx + coff);
+			widget->y = co ? (cy + coff) : cy;
+			widget->width = co ? cw : css;
+			widget->height = co ? css : ch;
+			break;
+		case POS_CENTER:
+			widget->x = co ? (cx + cw / 2 - ww / 2) : (cx + css * (wpip + 0.5) - ww / 2);
+			widget->y = co ? (cy + css * (wpip + 0.5) - wh / 2) : (cy + ch / 2 - wh / 2);
+			break;
+		case POS_LEFT:
+			widget->x = co ? cx : (cx + coff);
+			widget->y = co ? (cy + css * (wpip + 0.5) - wh / 2) : (cy + ch / 2 - wh / 2);
+			break;
+		case POS_TOP:
+			widget->x = co ? (cx + cw / 2 - ww / 2) : (cx + coff + css / 2 - ww  / 2);
+			widget->y = co ? (cy + coff) : cy;
+			break;
+		case POS_RIGHT:
+			widget->x = co ? (cx + cw - ww) : (cx + coff + css - ww);
+			widget->y = co ? (cy + coff + css / 2 - ww / 2) : (cy + ch / 2 - wh / 2);
+			break;
+		case POS_BOTTOM:
+			widget->x = co ? (cx + cw / 2 - ww / 2) : (cx + coff + css / 2 - ww  / 2);
+			widget->y = co ? (cy + coff + css - ww) : (cy + ch - wh);
 			break;
 		default:
 			return ERR_NOT_IMPLEMENTED;
@@ -127,7 +187,7 @@ ui_err_t ui_container_add(container_t *container, widget_t *widget)
 		return ERR_CONTAINER_FULL;
 	
 	container->children[container->children_num++] = widget;
-	ui_err_t err = ui_container_reset_positioning(container);
+	ui_err_t err = ui_container_arrange_children(container);
 	if (err) {
 		container->children_num--;
 		return err;
