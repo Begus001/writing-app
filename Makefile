@@ -6,7 +6,7 @@ CC = /usr/bin/cc
 CFLAGS_DEBUG = -O0 -Wall -Wextra -Wno-unused-parameter -std=gnu17 -pedantic -fms-extensions -ggdb
 CFLAGS_RELEASE = -O3 -Wall -Wextra -std=gnu17 -pedantic -fms-extensions
 
-LIBS = $(shell pkg-config glfw3 --static --libs) -lGL
+LIBS = $(shell pkg-config glfw3 --static --libs) -lGL -lfreetype -I/usr/include/freetype2
 
 
 build_debug: $(SRCS)

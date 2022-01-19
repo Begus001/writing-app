@@ -6,11 +6,14 @@
 
 #define NUM_ROUNDED_EDGES 32
 
+#define UI_FONT "FreeSans.ttf"
+#define UI_FONT_SEARCH_DIR "/usr/share/fonts"
+
 #define WIDGET(x)    ((widget_t *)(x))
 #define CONTAINER(x) ((container_t *)(x))
 #define BUTTON(x)    ((button_t *)(x))
 
-#define ERRMSG(x)    (fprintf(stderr, "%s\n", ui_err_to_message((x))))
+#define ERRMSG(x)    (fprintf(stderr, "UI Error: %s\n", ui_err_to_message((x))))
 
 
 typedef enum {
@@ -19,6 +22,10 @@ typedef enum {
 	ERR_INVALID_POSITION_IN_PARENT,
 	ERR_INVALID_RADIUS,
 	ERR_UNKNOWN_WIDGET,
+	ERR_INVALID_HEX,
+	ERR_FREETYPE_INIT,
+	ERR_FREETYPE_FACE,
+	ERR_FREETYPE_CHAR,
 	ERR_NOT_IMPLEMENTED,
 } ui_err_t;
 
@@ -62,6 +69,7 @@ struct widget {
 	bool visible;
 	int position_in_parent;
 	color_t main_color;
+	color_t font_color;
 };
 
 typedef struct {
@@ -81,17 +89,21 @@ typedef struct {
 
 void ui_set_framebuffer_dimensions(int x, int y, int w, int h);
 
+color_t ui_color_hex(char *hex);
+
 widget_t *ui_widget_create(widget_type_t type);
 
 ui_err_t ui_widget_set_root(widget_t *widget);
 
 ui_err_t ui_fill_rounded_rect(double x, double y, double w, double h, double r);
 ui_err_t ui_fill_rect(double x, double y, double w, double h);
+ui_err_t ui_draw_char(double x, double y, double h, const char c);
 
 ui_err_t ui_widget_draw(widget_t *widget);
 ui_err_t ui_widget_draw_recursive(widget_t *widget);
 
 ui_err_t ui_container_arrange_children(container_t *container);
+ui_err_t ui_container_arrange_children_recursive(container_t *container);
 ui_err_t ui_container_add(container_t *container, widget_t *widget);
 
 ui_err_t ui_widget_destroy(widget_t *widget);

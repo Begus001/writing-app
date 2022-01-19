@@ -1,5 +1,7 @@
 #include <UI/ui.h>
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #include <GLFW/glfw3.h>
 #include <math.h>
 #include <stdio.h>
@@ -8,6 +10,8 @@
 #include <string.h>
 
 int fbx, fby, fbwidth, fbheight;
+FT_Library ft;
+FT_Face face;
 
 void ui_set_framebuffer_dimensions(int x, int y, int w, int h)
 {
@@ -15,6 +19,55 @@ void ui_set_framebuffer_dimensions(int x, int y, int w, int h)
 	fby = y;
 	fbwidth = w;
 	fbheight = h;
+}
+
+color_t ui_color_hex(char *hex)
+{
+	int len = strlen(hex);
+	if (!(len == 4 || len == 7) || hex[0] != '#')
+		goto invalid_hex;
+
+	char *valid = "0123456789ABCDEFabcdef";
+	for (int i = 1; i < len; i++) {
+		bool check = false;
+		for (int j = 0; j < 22; j++) {
+			if (hex[i] == valid[j]) {
+				check = true;
+				break;
+			}
+		}
+		if (!check)
+			goto invalid_hex;
+	}
+
+	if (len == 4) {
+		if (hex[1] != hex[2] || hex[2] != hex[3] || hex[1] != hex[3])
+			goto invalid_hex;
+
+		double color_val = strtol(&hex[2], NULL, 16) / 255.0;
+
+		return (color_t) {
+			.r = color_val,
+			.g = color_val,
+			.b = color_val,
+			.a = 1.0,
+		};
+	} else {
+		char tmp[3][3] = {"", "", ""};
+		for (int i = 0, j = 1; i < 3; i++, j += 2)
+			strncpy(tmp[i], &hex[j], 2);
+
+		return (color_t) {
+			.r = strtol(tmp[0], NULL, 16) / 255.0,
+			.g = strtol(tmp[1], NULL, 16) / 255.0,
+			.b = strtol(tmp[2], NULL, 16) / 255.0,
+			.a = 1.0,
+		};
+	}
+
+invalid_hex:
+	ERRMSG(ERR_INVALID_HEX);
+	return (color_t){0};
 }
 
 widget_t *ui_widget_create(widget_type_t type)
@@ -87,6 +140,25 @@ ui_err_t ui_fill_rect(double x, double y, double w, double h)
 	return ERR_OK;
 }
 
+ui_err_t ui_draw_char(double x, double y, double h, const char c)
+{
+	FT_Set_Pixel_Sizes(face, 0, h);
+	if (FT_Load_Char(face, c, FT_LOAD_RENDER))
+		return ERR_FREETYPE_CHAR;
+
+	FT_Bitmap bm = face->glyph->bitmap;
+
+	glBegin(GL_POINTS);
+	for (unsigned int row = bm.rows - 1; row > 0; row--) {
+		for (unsigned int p = 0; p < bm.width; p++) {
+			if (bm.buffer[row * bm.width + p])
+				glVertex2d(x + p, y + row);
+		}
+	}
+	glEnd();
+	return ERR_OK;
+}
+
 ui_err_t ui_widget_draw(widget_t *widget)
 {
 	color_t c = widget->main_color;
@@ -112,7 +184,7 @@ ui_err_t ui_widget_draw_recursive(widget_t *widget)
 	int res;
 
 	do {
-		res = ui_widget_draw(WIDGET(c));
+		res = ui_widget_draw(WIDGET(*c));
 		if (res) return res;
 		for (int i = 0; i < (*c)->children_num; i++) {
 			widget_t *current = (*c)->children[i];
@@ -179,6 +251,29 @@ ui_err_t ui_container_arrange_children(container_t *container)
 	return ERR_OK;
 }
 
+ui_err_t ui_container_arrange_children_recursive(container_t *container)
+{
+	container_t *todo_list[2048] = {0};
+	todo_list[0] = container;
+	int todo_num = 1;
+	
+	container_t **c = &todo_list[0];
+
+	int res;
+
+	do {
+		res = ui_container_arrange_children(*c);
+		if (res) return res;
+		for (int i = 0; i < (*c)->children_num; i++) {
+			if ((*c)->children[i]->type == WIDGET_CONTAINER)
+				todo_list[todo_num++] = CONTAINER((*c)->children[i]);
+		}
+		c++;
+	} while(*c);
+
+	return ERR_OK;
+}
+
 ui_err_t ui_container_add(container_t *container, widget_t *widget)
 {
 	if (widget->position_in_parent >= container->children_max)
@@ -212,12 +307,47 @@ ui_err_t ui_widget_destroy(widget_t *widget)
 	}
 }
 
+static char *find_font(const char *name)
+{
+	char cmd[128];
+	int pos = 0;
+	char *output = malloc(sizeof(char) * 256);
+	memset(output, 0, 256);
+	sprintf(cmd, "find %s -name \"%s\"", UI_FONT_SEARCH_DIR, name);
+
+	FILE *pipe = popen(cmd, "r");
+	int n;
+	do {
+		n = fread(&output[pos], 1, 1, pipe);
+		if (output[pos] == '\n') {
+			output[pos] = '\0';
+			break;
+		}
+	} while (n > 0 && ++pos < 127);
+
+	fclose(pipe);
+
+	return output;
+}
+
 ui_err_t ui_init(int x, int y, int width, int height)
 {
 	fbx = x;
 	fby = y;
 	fbwidth = width;
 	fbheight = height;
+
+	if (FT_Init_FreeType(&ft)) return ERR_FREETYPE_INIT;
+	
+	char *path = find_font(UI_FONT);
+	
+	if (FT_New_Face(ft, path, 0, &face)) {
+		free(path);
+		return ERR_FREETYPE_FACE;
+	}
+
+	free(path);
+
 	return ERR_OK;
 }
 
@@ -225,7 +355,7 @@ char *ui_err_to_message(ui_err_t err)
 {
 	switch (err) {
 	case ERR_OK:
-		return "OK";
+		return "";
 	case ERR_CONTAINER_FULL:
 		return "Container is full";
 	case ERR_INVALID_POSITION_IN_PARENT:
@@ -234,6 +364,14 @@ char *ui_err_to_message(ui_err_t err)
 		return "Rounded rectangle radius cannot be higher than half of the shortest side";
 	case ERR_UNKNOWN_WIDGET:
 		return "Widget with unknown type received";
+	case ERR_INVALID_HEX:
+		return "Given value is not a valid hex color code";
+	case ERR_FREETYPE_INIT:
+		return "Initialization of FreeType failed";
+	case ERR_FREETYPE_FACE:
+		return "No type face found";
+	case ERR_FREETYPE_CHAR:
+		return "Couldn't load FreeType character";
 	case ERR_NOT_IMPLEMENTED:
 		return "The requested functionality has not been implemented yet";
 	default:
