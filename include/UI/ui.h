@@ -6,7 +6,7 @@
 
 #define NUM_ROUNDED_EDGES 32
 
-#define UI_FONT "FreeSans.ttf"
+#define UI_FONT "arial.ttf"
 #define UI_FONT_SEARCH_DIR "/usr/share/fonts"
 
 #define WIDGET(x)    ((widget_t *)(x))
@@ -14,11 +14,13 @@
 #define BUTTON(x)    ((button_t *)(x))
 
 #define ERRMSG(x)    (fprintf(stderr, "UI Error: %s\n", ui_err_to_message((x))))
+#define WARNMSG(x)   (fprintf(stderr, "UI Warning: %s\n", ui_err_to_message((x))))
 
 
 typedef enum {
 	ERR_OK,
 	ERR_CONTAINER_FULL,
+	ERR_INVALID_POSITIONING,
 	ERR_INVALID_POSITION_IN_PARENT,
 	ERR_INVALID_RADIUS,
 	ERR_UNKNOWN_WIDGET,
@@ -56,7 +58,13 @@ typedef enum {
 	POS_BOTTOM,
 } widget_positioning_t;
 
+typedef enum {
+	SPACE_SIZE_AUTO,
+	SPACE_SIZE_CUSTOM,
+} container_space_size_t;
+
 typedef struct widget widget_t;
+
 struct widget {
 	widget_type_t type;
 	widget_t *parent;
@@ -64,7 +72,8 @@ struct widget {
 	double y;
 	double width;
 	double height;
-	widget_positioning_t positioning;
+	widget_positioning_t xpositioning;
+	widget_positioning_t ypositioning;
 	double border_radius;
 	bool visible;
 	int position_in_parent;
@@ -75,7 +84,8 @@ struct widget {
 typedef struct {
 	widget_t;
 	container_orientation_t orientation;
-	double space_size;
+	container_space_size_t space_size_type[1024];
+	double space_size[1024];
 	double spacing;
 	int children_max;
 	int children_num;
@@ -97,11 +107,12 @@ ui_err_t ui_widget_set_root(widget_t *widget);
 
 ui_err_t ui_fill_rounded_rect(double x, double y, double w, double h, double r);
 ui_err_t ui_fill_rect(double x, double y, double w, double h);
-ui_err_t ui_draw_char(double x, double y, double h, const char c);
+ui_err_t ui_draw_string(double x, double y, double h, const char *s);
 
 ui_err_t ui_widget_draw(widget_t *widget);
 ui_err_t ui_widget_draw_recursive(widget_t *widget);
 
+ui_err_t ui_container_reset_space_sizes(container_t *container);
 ui_err_t ui_container_arrange_children(container_t *container);
 ui_err_t ui_container_arrange_children_recursive(container_t *container);
 ui_err_t ui_container_add(container_t *container, widget_t *widget);

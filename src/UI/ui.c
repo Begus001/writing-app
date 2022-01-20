@@ -91,6 +91,7 @@ widget_t *ui_widget_create(widget_type_t type)
 		widget->type = WIDGET_BUTTON;
 		break;
 	default:
+		ERRMSG(ERR_UNKNOWN_WIDGET);
 		return NULL;
 	}
 
@@ -107,14 +108,17 @@ ui_err_t ui_widget_set_root(widget_t *widget)
 	widget->border_radius = 0;
 	widget->parent = NULL;
 	widget->position_in_parent = 0;
-	widget->positioning = POS_FILL;
+	widget->xpositioning = POS_FILL;
+	widget->ypositioning = POS_FILL;
 	return ERR_OK;
 }
 
 ui_err_t ui_fill_rounded_rect(double x, double y, double w, double h, double r)
 {
-	if (r > fmin(w, h) / 2.0)
-		return ERR_INVALID_RADIUS;
+	if (r > fmin(w, h) / 2.0) {
+		WARNMSG(ERR_INVALID_RADIUS);
+		r = fmin(w, h) / 2.0;
+	}
 
 	glBegin(GL_POLYGON);
 	for (double d = 0.0; d <= M_PI_2; d += M_PI_2 / NUM_ROUNDED_EDGES)
@@ -140,22 +144,29 @@ ui_err_t ui_fill_rect(double x, double y, double w, double h)
 	return ERR_OK;
 }
 
-ui_err_t ui_draw_char(double x, double y, double h, const char c)
+ui_err_t ui_draw_string(double x, double y, double h, const char *s)
 {
-	FT_Set_Pixel_Sizes(face, 0, h);
-	if (FT_Load_Char(face, c, FT_LOAD_RENDER))
-		return ERR_FREETYPE_CHAR;
-
-	FT_Bitmap bm = face->glyph->bitmap;
-
-	glBegin(GL_POINTS);
-	for (unsigned int row = bm.rows - 1; row > 0; row--) {
-		for (unsigned int p = 0; p < bm.width; p++) {
-			if (bm.buffer[row * bm.width + p])
-				glVertex2d(x + p, y + row);
+	for (size_t i = 0; i < strlen(s); i++) {
+		FT_Set_Pixel_Sizes(face, 0, h);
+		if (FT_Load_Char(face, s[i], FT_LOAD_RENDER)) {
+			ERRMSG(ERR_FREETYPE_CHAR);
+			return ERR_FREETYPE_CHAR;
 		}
+
+		FT_Bitmap bm = face->glyph->bitmap;
+		double bearingx = face->glyph->metrics.horiBearingX / 64.0;
+		double bearingy = face->glyph->metrics.horiBearingY / 64.0;
+
+		glBegin(GL_POINTS);
+		for (unsigned int row = 0; row < bm.rows; row++) {
+			for (unsigned int p = 0; p < bm.width; p++) {
+				if (bm.buffer[row * bm.width + p])
+					glVertex2d(x + p + bearingx, y + row - bearingy);
+			}
+		}
+		glEnd();
+		x += face->glyph->metrics.horiAdvance / 64.0;
 	}
-	glEnd();
 	return ERR_OK;
 }
 
@@ -200,52 +211,84 @@ ui_err_t ui_widget_draw_recursive(widget_t *widget)
 	return ERR_OK;
 }
 
+ui_err_t ui_container_reset_space_sizes(container_t *container)
+{
+	int sum = 0;
+	int num_custom = 0;
+	for (int i = 0; i < container->children_max; i++) {
+		if (container->space_size_type[i] == SPACE_SIZE_CUSTOM) {
+			sum += container->space_size[i];
+			num_custom++;
+		}
+	}
+
+	for (int i = 0; i < container->children_max; i++) {
+		if (container->space_size_type[i] == SPACE_SIZE_AUTO) {
+			container->space_size[i] = ((container->orientation ? container->height : container->width) - sum) / (container->children_max - num_custom);
+		}
+	}
+	return ERR_OK;
+}
+
 ui_err_t ui_container_arrange_children(container_t *container)
 {
-	container->space_size = (container->orientation ? container->height : container->width) / container->children_max;
-
+	ui_container_reset_space_sizes(container);
 	for (int i = 0; i < container->children_num; i++) {
 		widget_t *widget = container->children[i];
 
-		if (widget->position_in_parent >= container->children_max)
+		if (widget->position_in_parent >= container->children_max) {
+			ERRMSG(ERR_INVALID_POSITION_IN_PARENT);
 			return ERR_INVALID_POSITION_IN_PARENT;
+		}
 		
 		double ww = widget->width, wh = widget->height;
 		int wpip = widget->position_in_parent;
 		double cx = container->x, cy = container->y, cw = container->width, ch = container->height;
-		double css = container->space_size;
-		int co = container->orientation;
-		double coff = container->space_size * widget->position_in_parent;
 
-		switch (widget->positioning) {
+		double css = container->space_size[i];
+
+		int co = container->orientation;
+		double coff = 0;
+		for (int j = 0; j < i; j++) {
+			coff += container->space_size[j];
+		}
+
+		switch (widget->xpositioning) {
 		case POS_FILL:
 			widget->x = co ? cx : (cx + coff);
-			widget->y = co ? (cy + coff) : cy;
 			widget->width = co ? cw : css;
-			widget->height = co ? css : ch;
 			break;
 		case POS_CENTER:
 			widget->x = co ? (cx + cw / 2 - ww / 2) : (cx + css * (wpip + 0.5) - ww / 2);
-			widget->y = co ? (cy + css * (wpip + 0.5) - wh / 2) : (cy + ch / 2 - wh / 2);
 			break;
 		case POS_LEFT:
 			widget->x = co ? cx : (cx + coff);
-			widget->y = co ? (cy + css * (wpip + 0.5) - wh / 2) : (cy + ch / 2 - wh / 2);
-			break;
-		case POS_TOP:
-			widget->x = co ? (cx + cw / 2 - ww / 2) : (cx + coff + css / 2 - ww  / 2);
-			widget->y = co ? (cy + coff) : cy;
 			break;
 		case POS_RIGHT:
 			widget->x = co ? (cx + cw - ww) : (cx + coff + css - ww);
-			widget->y = co ? (cy + coff + css / 2 - ww / 2) : (cy + ch / 2 - wh / 2);
+			break;
+		default:
+			ERRMSG(ERR_INVALID_POSITIONING);
+			return ERR_INVALID_POSITIONING;
+		}
+
+		switch (widget->ypositioning) {
+		case POS_FILL:
+			widget->y = co ? (cy + coff) : cy;
+			widget->height = co ? css : ch;
+			break;
+		case POS_CENTER:
+			widget->y = co ? (cy + coff + css * 0.5 - wh / 2) : (cy + ch / 2 - wh / 2);
+			break;
+		case POS_TOP:
+			widget->y = co ? (cy + coff) : cy;
 			break;
 		case POS_BOTTOM:
-			widget->x = co ? (cx + cw / 2 - ww / 2) : (cx + coff + css / 2 - ww  / 2);
 			widget->y = co ? (cy + coff + css - ww) : (cy + ch - wh);
 			break;
 		default:
-			return ERR_NOT_IMPLEMENTED;
+			ERRMSG(ERR_INVALID_POSITIONING);
+			return ERR_INVALID_POSITIONING;
 		}
 	}
 	return ERR_OK;
@@ -276,10 +319,13 @@ ui_err_t ui_container_arrange_children_recursive(container_t *container)
 
 ui_err_t ui_container_add(container_t *container, widget_t *widget)
 {
-	if (widget->position_in_parent >= container->children_max)
+	if (widget->position_in_parent >= container->children_max) {
+		ERRMSG(ERR_INVALID_POSITION_IN_PARENT);
 		return ERR_INVALID_POSITION_IN_PARENT;
-	else if (container->children_num >= container->children_max || (unsigned long)container->children_num >= sizeof(container->children))
+	} else if (container->children_num >= container->children_max || (unsigned long)container->children_num >= sizeof(container->children)) {
+		ERRMSG(ERR_CONTAINER_FULL);
 		return ERR_CONTAINER_FULL;
+	}
 	
 	container->children[container->children_num++] = widget;
 	ui_err_t err = ui_container_arrange_children(container);
@@ -303,6 +349,7 @@ ui_err_t ui_widget_destroy(widget_t *widget)
 		free(widget);
 		return ERR_OK;
 	default:
+		ERRMSG(ERR_UNKNOWN_WIDGET);
 		return ERR_UNKNOWN_WIDGET;
 	}
 }
@@ -337,12 +384,16 @@ ui_err_t ui_init(int x, int y, int width, int height)
 	fbwidth = width;
 	fbheight = height;
 
-	if (FT_Init_FreeType(&ft)) return ERR_FREETYPE_INIT;
+	if (FT_Init_FreeType(&ft)) {
+		ERRMSG(ERR_FREETYPE_INIT);
+		return ERR_FREETYPE_INIT;
+	}
 	
 	char *path = find_font(UI_FONT);
 	
 	if (FT_New_Face(ft, path, 0, &face)) {
 		free(path);
+		ERRMSG(ERR_FREETYPE_FACE);
 		return ERR_FREETYPE_FACE;
 	}
 
@@ -358,6 +409,8 @@ char *ui_err_to_message(ui_err_t err)
 		return "";
 	case ERR_CONTAINER_FULL:
 		return "Container is full";
+	case ERR_INVALID_POSITIONING:
+		return "Widget has invalid attribute \"xpositioning\" or \"ypositioning\"";
 	case ERR_INVALID_POSITION_IN_PARENT:
 		return "Widget has invalid attribute \"position_in_parent\"";
 	case ERR_INVALID_RADIUS:
