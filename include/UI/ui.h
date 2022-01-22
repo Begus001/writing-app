@@ -94,9 +94,27 @@ typedef struct {
 	widget_t *children[1024];
 } container_t;
 
+// Compatible with GLFW mouse button type
+typedef enum {
+	MOUSE_BUTTON_LEFT,
+	MOUSE_BUTTON_RIGHT,
+	MOUSE_BUTTON_MIDDLE,
+	MOUSE_BUTTON_BACKWARD,
+	MOUSE_BUTTON_FORWARD,
+} mouse_button_t;
+
+// Compatible with GLFW actions
+typedef enum {
+	ACTION_RELEASE,
+	ACTION_PRESS,
+} mouse_action_t;
+
 typedef struct {
 	widget_t;
+	void (*cb_click)(widget_t *widget, mouse_button_t mb, mouse_action_t action);
 } button_t;
+
+extern widget_t *root_widget;
 
 void ui_set_framebuffer_dimensions(int x, int y, int w, int h);
 
@@ -115,11 +133,14 @@ ui_err_t ui_draw_string_centered(double x, double y, double h, const char *s);
 
 ui_err_t ui_widget_draw(widget_t *widget);
 ui_err_t ui_widget_draw_recursive(widget_t *widget);
+ui_err_t ui_widget_draw_all(void);
 
 ui_err_t ui_container_reset_space_sizes(container_t *container);
 ui_err_t ui_container_arrange_children(container_t *container);
 ui_err_t ui_container_arrange_children_recursive(container_t *container);
 ui_err_t ui_container_add(container_t *container, widget_t *widget);
+
+ui_err_t ui_check_click_handlers(double x, double y, mouse_button_t mb, mouse_action_t action);
 
 ui_err_t ui_widget_destroy(widget_t *widget);
 

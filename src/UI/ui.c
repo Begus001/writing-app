@@ -9,9 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-int fbx, fby, fbwidth, fbheight;
+widget_t *root_widget;
+
 FT_Library ft;
 FT_Face face;
+
+int fbx, fby, fbwidth, fbheight;
 
 void ui_set_framebuffer_dimensions(int x, int y, int w, int h)
 {
@@ -101,6 +104,7 @@ widget_t *ui_widget_create(widget_type_t type)
 
 ui_err_t ui_widget_set_root(widget_t *widget)
 {
+	root_widget = widget;
 	widget->x = fbx;
 	widget->y = fby;
 	widget->width = fbwidth;
@@ -268,6 +272,11 @@ ui_err_t ui_widget_draw_recursive(widget_t *widget)
 	return ERR_OK;
 }
 
+ui_err_t ui_widget_draw_all(void)
+{
+	return ui_widget_draw_recursive(root_widget);
+}
+
 ui_err_t ui_container_reset_space_sizes(container_t *container)
 {
 	int sum = 0;
@@ -391,6 +400,42 @@ ui_err_t ui_container_add(container_t *container, widget_t *widget)
 		return err;
 	}
 	widget->parent = WIDGET(container);
+	return ERR_OK;
+}
+
+static bool check_position_in_bounds(widget_t *w, double x, double y)
+{
+	if (x >= w->x && x <= w->x + w->width && y >= w->y && y <= w->y + w->height)
+		return true;
+	return false;
+}
+
+ui_err_t ui_check_click_handlers(double x, double y, mouse_button_t mb, mouse_action_t action)
+{
+	if (root_widget->type == WIDGET_BUTTON && BUTTON(root_widget)->cb_click) {
+		BUTTON(root_widget)->cb_click(root_widget, mb, action);
+		return ERR_OK;
+	} else if (root_widget->type != WIDGET_CONTAINER)
+		return ERR_OK;
+
+	container_t *todo_list[2048] = {0};
+	todo_list[0] = CONTAINER(root_widget);
+	int todo_num = 1;
+
+	container_t **c = &todo_list[0];
+
+	do {
+		for (int i = 0; i < (*c)->children_num; i++) {
+			widget_t *current = (*c)->children[i];
+			if (current->type == WIDGET_CONTAINER) {
+				todo_list[todo_num++] = CONTAINER(current);
+			} else if (current->type == WIDGET_BUTTON && BUTTON(current)->cb_click && check_position_in_bounds(current, x, y)) {
+				BUTTON(current)->cb_click(current, mb, action);
+			}
+		}
+		c++;
+	} while(*c);
+
 	return ERR_OK;
 }
 

@@ -11,6 +11,8 @@
 GLFWwindow *win;
 container_t *root;
 
+double cursorx, cursory;
+
 void cb_error(int error, const char *description)
 {
 	fprintf(stderr, "ERROR %d: %s\n", error, description);
@@ -25,17 +27,32 @@ void cb_resize(GLFWwindow* window, int width, int height)
 	ui_set_framebuffer_dimensions(0, 0, width, height);
 	ui_widget_set_root(WIDGET(root));
 	ui_container_arrange_children_recursive(root);
-
-	// glClear(GL_COLOR_BUFFER_BIT);
-	// ui_widget_draw_recursive(WIDGET(root));
-	// glfwSwapBuffers(win);
 }
 
 void cb_maximize(GLFWwindow* window, int maximized)
 {
-	// glClear(GL_COLOR_BUFFER_BIT);
-	// ui_widget_draw_recursive(WIDGET(root));
-	// glfwSwapBuffers(win);
+	
+}
+
+void cb_mouse_click(GLFWwindow* window, int button, int action, int mods)
+{
+	ui_check_click_handlers(cursorx, cursory, button, action);
+}
+
+void cb_cursor_pos(GLFWwindow* window, double xpos, double ypos)
+{
+	cursorx = xpos;
+	cursory = ypos;
+}
+
+void cb_content_click(widget_t *widget, mouse_button_t mb, mouse_action_t action)
+{
+	if (action == ACTION_PRESS) {
+		printf("Content clicked with button %d!\n", mb);
+	} else {
+		printf("Content click with button %d released!\n", mb);
+	}
+	fflush(stdout);
 }
 
 int main(void)
@@ -52,6 +69,8 @@ int main(void)
 
 	glfwSetFramebufferSizeCallback(win, cb_resize);
 	glfwSetWindowMaximizeCallback(win, cb_maximize);
+	glfwSetMouseButtonCallback(win, cb_mouse_click);
+	glfwSetCursorPosCallback(win, cb_cursor_pos);
 	
 	int fbwidth, fbheight;
 	glfwGetFramebufferSize(win, &fbwidth, &fbheight);
@@ -89,7 +108,7 @@ int main(void)
 	top_bar->font_color = ui_color_hex("#FFF");
 	top_bar->font_size = 75;
 
-	widget_t *content = ui_widget_create(WIDGET_WIDGET);
+	button_t *content = BUTTON(ui_widget_create(WIDGET_BUTTON));
 	content->background_color = ui_color_hex("#555");
 	content->border_radius = 100;
 	content->position_in_parent = 1;
@@ -99,25 +118,26 @@ int main(void)
 	ui_widget_set_text(WIDGET(content), "Content");
 	content->font_color = ui_color_hex("#FFF");
 	content->font_size = 100;
+	content->cb_click = cb_content_click;
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	ui_container_add(root, WIDGET(top_bar));
-	ui_container_add(root, content);
+	ui_container_add(root, WIDGET(content));
 
-	ui_widget_draw_recursive(WIDGET(root));
+	ui_widget_draw_all();
 
 	glfwSwapBuffers(win);
 
 	while(!glfwWindowShouldClose(win)) {
 		glClear(GL_COLOR_BUFFER_BIT);
-		ui_widget_draw_recursive(WIDGET(root));
+		ui_widget_draw_all();
 		glfwSwapBuffers(win);
 		glfwPollEvents();
 	}
 
 	ui_widget_destroy(WIDGET(root));
 	ui_widget_destroy(WIDGET(top_bar));
-	ui_widget_destroy(content);
+	ui_widget_destroy(WIDGET(content));
 
 	glfwDestroyWindow(win);
 
