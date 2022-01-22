@@ -113,6 +113,30 @@ ui_err_t ui_widget_set_root(widget_t *widget)
 	return ERR_OK;
 }
 
+ui_err_t ui_widget_set_text(widget_t *widget, const char *text)
+{
+	if (!widget->text) {
+		widget->text = malloc(strlen(text) + 1);
+	} else {
+		widget->text = realloc(widget->text, strlen(text) + 1);
+	}
+
+	memset(widget->text, 0, strlen(text) + 1);
+	strcpy(widget->text, text);
+
+	return ERR_OK;
+}
+
+ui_err_t ui_widget_clear_text(widget_t *widget)
+{
+	if (widget->text)
+		free(widget->text);
+
+	widget->text = NULL;
+
+	return ERR_OK;
+}
+
 ui_err_t ui_fill_rounded_rect(double x, double y, double w, double h, double r)
 {
 	if (r > fmin(w, h) / 2.0) {
@@ -193,13 +217,25 @@ ui_err_t ui_draw_string_centered(double x, double y, double h, const char *s)
 
 ui_err_t ui_widget_draw(widget_t *widget)
 {
-	color_t c = widget->main_color;
+	color_t c = widget->background_color;
+	int ret;
 	glColor4d(c.r, c.g, c.b, c.a);
-	if (widget->border_radius > 0)
-		return ui_fill_rounded_rect(
-			widget->x, widget->y, widget->width, widget->height, widget->border_radius);
-	else
-		return ui_fill_rect(widget->x, widget->y, widget->width, widget->height);
+	if (widget->border_radius > 0) {
+		ret = ui_fill_rounded_rect( widget->x, widget->y, widget->width, widget->height,widget->border_radius);
+		if (ret) ERRMSG(ret);
+		} else {
+			ret = ui_fill_rect(widget->x, widget->y, widget->width, widget->height);
+			if (ret) ERRMSG(ret);
+		}
+	
+	if (widget->text) {
+		c = widget->font_color;
+		glColor4d(c.r, c.g, c.b, c.a);
+		ret = ui_draw_string_centered(widget->x + widget->width / 2.0, widget->y + widget->height / 2.0, widget->font_size, widget->text);
+		if (ret) ERRMSG(ret);
+	}
+
+	return ERR_OK;
 }
 
 ui_err_t ui_widget_draw_recursive(widget_t *widget)
@@ -367,6 +403,8 @@ ui_err_t ui_widget_destroy(widget_t *widget)
 	case WIDGET_WIDGET:
 	case WIDGET_CONTAINER:
 	case WIDGET_BUTTON:
+		if (widget->text)
+			free(widget->text);
 		free(widget);
 		return ERR_OK;
 	default:

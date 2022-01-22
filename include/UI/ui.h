@@ -77,8 +77,10 @@ struct widget {
 	double border_radius;
 	bool visible;
 	int position_in_parent;
-	color_t main_color;
+	color_t background_color;
 	color_t font_color;
+	int font_size;
+	char *text;
 };
 
 typedef struct {
@@ -94,7 +96,6 @@ typedef struct {
 
 typedef struct {
 	widget_t;
-	char *text;
 } button_t;
 
 void ui_set_framebuffer_dimensions(int x, int y, int w, int h);
@@ -104,6 +105,8 @@ color_t ui_color_hex(char *hex);
 widget_t *ui_widget_create(widget_type_t type);
 
 ui_err_t ui_widget_set_root(widget_t *widget);
+ui_err_t ui_widget_set_text(widget_t *widget, const char *text);
+ui_err_t ui_widget_clear_text(widget_t *widget);
 
 ui_err_t ui_fill_rounded_rect(double x, double y, double w, double h, double r);
 ui_err_t ui_fill_rect(double x, double y, double w, double h);

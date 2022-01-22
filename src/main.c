@@ -72,7 +72,7 @@ int main(void)
 	}
 
 	root = CONTAINER(ui_widget_create(WIDGET_CONTAINER));
-	root->main_color = ui_color_hex("#222");
+	root->background_color = ui_color_hex("#222");
 	root->orientation = ORIENTATION_VERTICAL;
 	root->children_max = 2;
 	root->space_size_type[0] = SPACE_SIZE_CUSTOM;
@@ -82,17 +82,23 @@ int main(void)
 	
 	container_t *top_bar = CONTAINER(ui_widget_create(WIDGET_CONTAINER));
 	top_bar->children_max = 3;
-	top_bar->main_color = ui_color_hex("#111");
+	top_bar->background_color = ui_color_hex("#111");
 	top_bar->orientation = ORIENTATION_HORIZONTAL;
 	top_bar->position_in_parent = 0;
+	ui_widget_set_text(WIDGET(top_bar), "Top Bar");
+	top_bar->font_color = ui_color_hex("#FFF");
+	top_bar->font_size = 75;
 
 	widget_t *content = ui_widget_create(WIDGET_WIDGET);
-	content->main_color = ui_color_hex("#555");
+	content->background_color = ui_color_hex("#555");
 	content->border_radius = 100;
 	content->position_in_parent = 1;
 	content->xpositioning = content->ypositioning = POS_CENTER;
 	content->width = 800;
 	content->height = 500;
+	ui_widget_set_text(WIDGET(content), "Content");
+	content->font_color = ui_color_hex("#FFF");
+	content->font_size = 100;
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	ui_container_add(root, WIDGET(top_bar));
@@ -105,11 +111,13 @@ int main(void)
 	while(!glfwWindowShouldClose(win)) {
 		glClear(GL_COLOR_BUFFER_BIT);
 		ui_widget_draw_recursive(WIDGET(root));
-		glColor3d(1, 1, 1);
-		ui_draw_string_centered(content->x + content->width / 2.0, content->y + content->height / 2.0, 120, "Content");
 		glfwSwapBuffers(win);
 		glfwPollEvents();
 	}
+
+	ui_widget_destroy(WIDGET(root));
+	ui_widget_destroy(WIDGET(top_bar));
+	ui_widget_destroy(content);
 
 	glfwDestroyWindow(win);
 
