@@ -170,6 +170,27 @@ ui_err_t ui_draw_string(double x, double y, double h, const char *s)
 	return ERR_OK;
 }
 
+ui_err_t ui_draw_string_centered(double x, double y, double h, const char *s)
+{
+	size_t len = strlen(s);
+	double width = 0, height = 0;
+	for (size_t i = 0; i < len; i++) {
+		FT_Set_Pixel_Sizes(face, 0, h);
+		if (FT_Load_Char(face, s[i], FT_LOAD_NO_BITMAP)) {
+			ERRMSG(ERR_FREETYPE_CHAR);
+			return ERR_FREETYPE_CHAR;
+		}
+
+		FT_Glyph_Metrics m = face->glyph->metrics;
+		width += m.horiAdvance / 64.0;
+		height += m.height / 64.0;
+	}
+
+	height /= len;
+
+	return ui_draw_string(x - width / 2.0, y + height / 2.0, h, s);
+}
+
 ui_err_t ui_widget_draw(widget_t *widget)
 {
 	color_t c = widget->main_color;

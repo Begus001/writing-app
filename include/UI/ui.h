@@ -108,6 +108,7 @@ ui_err_t ui_widget_set_root(widget_t *widget);
 ui_err_t ui_fill_rounded_rect(double x, double y, double w, double h, double r);
 ui_err_t ui_fill_rect(double x, double y, double w, double h);
 ui_err_t ui_draw_string(double x, double y, double h, const char *s);
+ui_err_t ui_draw_string_centered(double x, double y, double h, const char *s);
 
 ui_err_t ui_widget_draw(widget_t *widget);
 ui_err_t ui_widget_draw_recursive(widget_t *widget);

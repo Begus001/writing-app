@@ -106,7 +106,7 @@ int main(void)
 		glClear(GL_COLOR_BUFFER_BIT);
 		ui_widget_draw_recursive(WIDGET(root));
 		glColor3d(1, 1, 1);
-		ui_draw_string(root->width / 2.0 - 185, root->height / 2.0 + 80, 100, "Content");
+		ui_draw_string_centered(content->x + content->width / 2.0, content->y + content->height / 2.0, 120, "Content");
 		glfwSwapBuffers(win);
 		glfwPollEvents();
 	}
